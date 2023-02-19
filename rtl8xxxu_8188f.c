@@ -534,7 +534,11 @@ static void rtl8188fu_config_channel(struct ieee80211_hw *hw)
 	u8 channel, subchannel;
 	bool sec_ch_above;
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,9,11)
 	channel = (u8)hw->conf.chandef.chan->hw_value;
+#else
+	channel = (u8)hw->conf.channel->hw_value;
+#endif
 
 	/* Set channel */
 	val32 = rtl8xxxu_read_rfreg(priv, RF_A, RF6052_REG_MODE_AG);
@@ -548,12 +552,20 @@ static void rtl8188fu_config_channel(struct ieee80211_hw *hw)
 	/* Set bandwidth mode */
 	val32 = rtl8xxxu_read32(priv, REG_FPGA0_RF_MODE);
 	val32 &= ~FPGA_RF_MODE;
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,9,11)
 	val32 |= hw->conf.chandef.width == NL80211_CHAN_WIDTH_40;
+#else
+	val32 |= hw->conf.channel_type == NL80211_CHAN_HT40MINUS;
+#endif
 	rtl8xxxu_write32(priv, REG_FPGA0_RF_MODE, val32);
 
 	val32 = rtl8xxxu_read32(priv, REG_FPGA1_RF_MODE);
 	val32 &= ~FPGA_RF_MODE;
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,9,11)
 	val32 |= hw->conf.chandef.width == NL80211_CHAN_WIDTH_40;
+#else
+	val32 |= hw->conf.channel_type == NL80211_CHAN_HT40MINUS;
+#endif
 	rtl8xxxu_write32(priv, REG_FPGA1_RF_MODE, val32);
 
 	/* RXADC CLK */
@@ -591,22 +603,38 @@ static void rtl8188fu_config_channel(struct ieee80211_hw *hw)
 	val32 = rtl8xxxu_read32(priv, REG_OFDM_RX_DFIR);
 	val32 &= ~GENMASK(23, 20);
 	val32 |= BIT(21);
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,9,11)
 	if (hw->conf.chandef.width == NL80211_CHAN_WIDTH_20 ||
-	    hw->conf.chandef.width == NL80211_CHAN_WIDTH_20_NOHT)
+		hw->conf.chandef.width == NL80211_CHAN_WIDTH_20_NOHT)
 		val32 |= BIT(20);
 	else if (hw->conf.chandef.width == NL80211_CHAN_WIDTH_40)
 		val32 |= BIT(22);
+#else
+	if (hw->conf.channel_type == NL80211_CHAN_HT20 ||
+		hw->conf.channel_type == NL80211_CHAN_NO_HT)
+		val32 |= BIT(20);
+	else if (hw->conf.channel_type == NL80211_CHAN_HT40MINUS)
+		val32 |= BIT(22);
+#endif
+	
 	rtl8xxxu_write32(priv, REG_OFDM_RX_DFIR, val32);
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,9,11)
 	if (hw->conf.chandef.width == NL80211_CHAN_WIDTH_40) {
 		if (hw->conf.chandef.center_freq1 >
-		    hw->conf.chandef.chan->center_freq) {
+			hw->conf.chandef.chan->center_freq) {
 			sec_ch_above = 1;
 			channel += 2;
-		} else {
+		}
+		else {
 			sec_ch_above = 0;
 			channel -= 2;
 		}
+#else
+	if (hw->conf.channel_type == NL80211_CHAN_WIDTH_40) {
+		sec_ch_above = 0;
+		channel -= 2;
+#endif
 
 		/* Set Control channel to upper or lower. */
 		val32 = rtl8xxxu_read32(priv, REG_CCK0_SYSTEM);
@@ -631,26 +659,50 @@ static void rtl8188fu_config_channel(struct ieee80211_hw *hw)
 
 	/* RF TRX_BW */
 	val32 = channel;
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,9,11)
 	if (hw->conf.chandef.width == NL80211_CHAN_WIDTH_20 ||
-	    hw->conf.chandef.width == NL80211_CHAN_WIDTH_20_NOHT)
+		hw->conf.chandef.width == NL80211_CHAN_WIDTH_20_NOHT)
 		val32 |= MODE_AG_BW_20MHZ_8723B;
 	else if (hw->conf.chandef.width == NL80211_CHAN_WIDTH_40)
 		val32 |= MODE_AG_BW_40MHZ_8723B;
+#else
+	if (hw->conf.channel_type == NL80211_CHAN_HT20 ||
+		hw->conf.channel_type == NL80211_CHAN_NO_HT)
+		val32 |= MODE_AG_BW_20MHZ_8723B;
+	else if (hw->conf.channel_type == NL80211_CHAN_HT40MINUS)
+		val32 |= MODE_AG_BW_40MHZ_8723B;
+#endif
 	rtl8xxxu_write_rfreg(priv, RF_A, RF6052_REG_MODE_AG, val32);
 
 	/* FILTER BW&RC Corner (ACPR) */
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,9,11)
 	if (hw->conf.chandef.width == NL80211_CHAN_WIDTH_20 ||
-	    hw->conf.chandef.width == NL80211_CHAN_WIDTH_20_NOHT)
-		val32 = 0x00065;
+		hw->conf.chandef.width == NL80211_CHAN_WIDTH_20_NOHT)
+		val32 |= 0x00065;
 	else if (hw->conf.chandef.width == NL80211_CHAN_WIDTH_40)
-		val32 = 0x00025;
+		val32 |= 0x00025;
+#else
+	if (hw->conf.channel_type == NL80211_CHAN_HT20 ||
+		hw->conf.channel_type == NL80211_CHAN_NO_HT)
+		val32 |= 0x00065;
+	else if (hw->conf.channel_type == NL80211_CHAN_HT40MINUS)
+		val32 |= 0x00025;
+#endif
 	rtl8xxxu_write_rfreg(priv, RF_A, RF6052_REG_RXG_MIX_SWBW, val32);
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,9,11)
 	if (hw->conf.chandef.width == NL80211_CHAN_WIDTH_20 ||
-	    hw->conf.chandef.width == NL80211_CHAN_WIDTH_20_NOHT)
-		val32 = 0x0;
+		hw->conf.chandef.width == NL80211_CHAN_WIDTH_20_NOHT)
+		val32 |= 0x0;
 	else if (hw->conf.chandef.width == NL80211_CHAN_WIDTH_40)
-		val32 = 0x01000;
+		val32 |= 0x01000;
+#else
+	if (hw->conf.channel_type == NL80211_CHAN_HT20 ||
+		hw->conf.channel_type == NL80211_CHAN_NO_HT)
+		val32 |= 0x0;
+	else if (hw->conf.channel_type == NL80211_CHAN_HT40MINUS)
+		val32 |= 0x01000;
+#endif
 	rtl8xxxu_write_rfreg(priv, RF_A, RF6052_REG_RX_BB2, val32);
 
 	/* RC Corner */

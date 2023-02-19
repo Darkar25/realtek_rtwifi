@@ -7,6 +7,12 @@
 
 #include <asm/byteorder.h>
 
+#include <linux/version.h>
+
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(3,13,11)
+#include "missing.h"
+#endif
+
 #define RTL8XXXU_DEBUG_REG_WRITE	0x01
 #define RTL8XXXU_DEBUG_REG_READ		0x02
 #define RTL8XXXU_DEBUG_RFREG_WRITE	0x04
