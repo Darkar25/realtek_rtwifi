@@ -344,12 +344,20 @@ static int rtl8192cu_identify_chip(struct rtl8xxxu_priv *priv)
 		bonding = rtl8xxxu_read32(priv, REG_HPON_FSM);
 		bonding &= HPON_FSM_BONDING_MASK;
 		if (bonding == HPON_FSM_BONDING_1T2R) {
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,16,59)
 			strscpy(priv->chip_name, "8191CU", sizeof(priv->chip_name));
+#else
+			sprintf(priv->chip_name, "8191CU");
+#endif
 			priv->tx_paths = 1;
 			priv->usb_interrupts = 1;
 			priv->rtl_chip = RTL8191C;
 		} else {
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,16,59)
 			strscpy(priv->chip_name, "8192CU", sizeof(priv->chip_name));
+#else
+			sprintf(priv->chip_name, "8192CU");
+#endif
 			priv->tx_paths = 2;
 			priv->usb_interrupts = 0;
 			priv->rtl_chip = RTL8192C;
@@ -357,7 +365,11 @@ static int rtl8192cu_identify_chip(struct rtl8xxxu_priv *priv)
 		priv->rf_paths = 2;
 		priv->rx_paths = 2;
 	} else {
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,16,59)
 		strscpy(priv->chip_name, "8188CU", sizeof(priv->chip_name));
+#else
+		sprintf(priv->chip_name, "8188CU");
+#endif
 		priv->rf_paths = 1;
 		priv->rx_paths = 1;
 		priv->tx_paths = 1;
@@ -449,7 +461,11 @@ static int rtl8192cu_parse_efuse(struct rtl8xxxu_priv *priv)
 	priv->power_base = &rtl8192c_power_base;
 
 	if (efuse->rf_regulatory & 0x20) {
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,16,59)
 		strscpy(priv->chip_name, "8188RU", sizeof(priv->chip_name));
+#else
+		sprintf(priv->chip_name, "8188RU");
+#endif
 		priv->rtl_chip = RTL8188R;
 		priv->hi_pa = 1;
 		priv->no_pape = 1;

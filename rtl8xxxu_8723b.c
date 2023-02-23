@@ -317,8 +317,11 @@ static int rtl8723bu_identify_chip(struct rtl8xxxu_priv *priv)
 		ret = -ENOTSUPP;
 		goto out;
 	}
-
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,16,59)
 	strscpy(priv->chip_name, "8723BU", sizeof(priv->chip_name));
+#else
+	sprintf(priv->chip_name, "8723BU");
+#endif
 	priv->rtl_chip = RTL8723B;
 	priv->rf_paths = 1;
 	priv->rx_paths = 1;

@@ -22,6 +22,7 @@
 #include <linux/module.h>
 #include <linux/spinlock.h>
 #include <linux/list.h>
+#include <linux/leds.h>
 #include <linux/usb.h>
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
@@ -1660,10 +1661,18 @@ static void rtl8xxxu_print_chipinfo(struct rtl8xxxu_priv *priv)
 void rtl8xxxu_identify_vendor_1bit(struct rtl8xxxu_priv *priv, u32 vendor)
 {
 	if (vendor) {
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,16,59)
 		strscpy(priv->chip_vendor, "UMC", sizeof(priv->chip_vendor));
+#else
+		sprintf(priv->chip_vendor, "UMC");
+#endif
 		priv->vendor_umc = 1;
 	} else {
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,16,59)
 		strscpy(priv->chip_vendor, "TSMC", sizeof(priv->chip_vendor));
+#else
+		sprintf(priv->chip_vendor, "TSMC");
+#endif
 	}
 }
 
@@ -1671,18 +1680,34 @@ void rtl8xxxu_identify_vendor_2bits(struct rtl8xxxu_priv *priv, u32 vendor)
 {
 	switch (vendor) {
 	case SYS_CFG_VENDOR_ID_TSMC:
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,16,59)
 		strscpy(priv->chip_vendor, "TSMC", sizeof(priv->chip_vendor));
+#else
+		sprintf(priv->chip_vendor, "TSMC");
+#endif
 		break;
 	case SYS_CFG_VENDOR_ID_SMIC:
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,16,59)
 		strscpy(priv->chip_vendor, "SMIC", sizeof(priv->chip_vendor));
+#else
+		sprintf(priv->chip_vendor, "SMIC");
+#endif
 		priv->vendor_smic = 1;
 		break;
 	case SYS_CFG_VENDOR_ID_UMC:
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,16,59)
 		strscpy(priv->chip_vendor, "UMC", sizeof(priv->chip_vendor));
+#else
+		sprintf(priv->chip_vendor, "UMC");
+#endif
 		priv->vendor_umc = 1;
 		break;
 	default:
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,16,59)
 		strscpy(priv->chip_vendor, "unknown", sizeof(priv->chip_vendor));
+#else
+		sprintf(priv->chip_vendor, "unknown");
+#endif
 	}
 }
 
@@ -4704,23 +4729,52 @@ static u16
 rtl8xxxu_wireless_mode(struct ieee80211_hw *hw, struct ieee80211_sta *sta)
 {
 	u16 network_type = WIRELESS_MODE_UNKNOWN;
-
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,9,11)
 	if (hw->conf.chandef.chan->band == NL80211_BAND_5GHZ) {
+#else
+	if (hw->conf.channel->band == IEEE80211_BAND_5GHZ) {
+#endif
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5,18,19)
 		if (sta->deflink.vht_cap.vht_supported)
 			network_type = WIRELESS_MODE_AC;
 		else if (sta->deflink.ht_cap.ht_supported)
 			network_type = WIRELESS_MODE_N_5G;
-
+#else
+	#if LINUX_VERSION_CODE > KERNEL_VERSION(3,7,10)
+		if (sta->vht_cap.vht_supported)
+			network_type = WIRELESS_MODE_AC;
+		else
+	#endif
+		if (sta->ht_cap.ht_supported)
+			network_type = WIRELESS_MODE_N_5G;
+#endif
 		network_type |= WIRELESS_MODE_A;
 	} else {
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5,18,19)
 		if (sta->deflink.vht_cap.vht_supported)
 			network_type = WIRELESS_MODE_AC;
 		else if (sta->deflink.ht_cap.ht_supported)
 			network_type = WIRELESS_MODE_N_24G;
-
+#else
+	#if LINUX_VERSION_CODE > KERNEL_VERSION(3,7,10)
+		if (sta->vht_cap.vht_supported)
+			network_type = WIRELESS_MODE_AC;
+		else 
+	#endif
+		if (sta->ht_cap.ht_supported)
+			network_type = WIRELESS_MODE_N_24G;
+#endif
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5,18,19)
 		if (sta->deflink.supp_rates[0] <= 0xf)
+#else
+		if (sta->supp_rates[0] <= 0xf)
+#endif
 			network_type |= WIRELESS_MODE_B;
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5,18,19)
 		else if (sta->deflink.supp_rates[0] & 0xf)
+#else
+		else if (sta->supp_rates[0] & 0xf)
+#endif
 			network_type |= (WIRELESS_MODE_B | WIRELESS_MODE_G);
 		else
 			network_type |= WIRELESS_MODE_G;
@@ -4752,7 +4806,11 @@ static void rtl8xxxu_set_aifs(struct rtl8xxxu_priv *priv, u8 slot_time)
 		rcu_read_unlock();
 	}
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,9,11)
 	if (priv->hw->conf.chandef.chan->band == NL80211_BAND_5GHZ ||
+#else
+	if (priv->hw->conf.channel->band == IEEE80211_BAND_5GHZ ||
+#endif
 	    (wireless_mode & WIRELESS_MODE_N_24G))
 		sifs = 16;
 	else
@@ -4790,12 +4848,16 @@ void rtl8xxxu_update_ra_report(struct rtl8xxxu_ra_report *rarpt,
 		rarpt->txrate.flags |= RATE_INFO_FLAGS_MCS;
 
 		rarpt->txrate.mcs = mcs;
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,7,10)
 		rarpt->txrate.nss = nss;
+#endif
 
 		if (sgi)
 			rarpt->txrate.flags |= RATE_INFO_FLAGS_SHORT_GI;
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,19,8) // i dont know what to do with this...looks like its the alternative for channel width? but in this method`s scope there is no way to change the channel width so i just limit this line by version and hope that nothing breaks
 		rarpt->txrate.bw = bw;
+#endif
 	}
 
 	rarpt->bit_rate = cfg80211_calculate_bitrate(&rarpt->txrate);
@@ -4804,7 +4866,13 @@ void rtl8xxxu_update_ra_report(struct rtl8xxxu_ra_report *rarpt,
 
 static void
 rtl8xxxu_bss_info_changed(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
-			  struct ieee80211_bss_conf *bss_conf, u64 changed)
+			  struct ieee80211_bss_conf *bss_conf, 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5,9,17)
+			  u64 changed
+#else
+			  u32 changed
+#endif
+			  )
 {
 	struct rtl8xxxu_priv *priv = hw->priv;
 	struct device *dev = &priv->udev->dev;
@@ -4816,11 +4884,19 @@ rtl8xxxu_bss_info_changed(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 	rarpt = &priv->ra_report;
 
 	if (changed & BSS_CHANGED_ASSOC) {
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5,9,17)
 		dev_dbg(dev, "Changed ASSOC: %i!\n", vif->cfg.assoc);
+#else
+		dev_dbg(dev, "Changed ASSOC: %i!\n", bss_conf->assoc);
+#endif
 
 		rtl8xxxu_set_linktype(priv, vif->type);
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5,9,17)
 		if (vif->cfg.assoc) {
+#else
+		if (bss_conf->assoc) {
+#endif
 			u32 ramask;
 			int sgi = 0;
 			u8 highest_rate;
@@ -4834,28 +4910,50 @@ rtl8xxxu_bss_info_changed(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 				rcu_read_unlock();
 				goto error;
 			}
-
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5,18,19)
 			if (sta->deflink.ht_cap.ht_supported)
 				dev_info(dev, "%s: HT supported\n", __func__);
-#if LINUX_VERSION_CODE > KERNEL_VERSION(3,7,10)
 			if (sta->deflink.vht_cap.vht_supported)
 				dev_info(dev, "%s: VHT supported\n", __func__);
+#else
+			if (sta->ht_cap.ht_supported)
+				dev_info(dev, "%s: HT supported\n", __func__);
+	#if LINUX_VERSION_CODE > KERNEL_VERSION(3,7,10)
+			if (sta->vht_cap.vht_supported)
+				dev_info(dev, "%s: VHT supported\n", __func__);
+	#endif
 #endif
-
 			/* TODO: Set bits 28-31 for rate adaptive id */
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5,18,19)
 			ramask = (sta->deflink.supp_rates[0] & 0xfff) |
 				sta->deflink.ht_cap.mcs.rx_mask[0] << 12 |
 				sta->deflink.ht_cap.mcs.rx_mask[1] << 20;
 			if (sta->deflink.ht_cap.cap &
-			    (IEEE80211_HT_CAP_SGI_40 | IEEE80211_HT_CAP_SGI_20))
+#else
+			ramask = (sta->supp_rates[0] & 0xfff) |
+				sta->ht_cap.mcs.rx_mask[0] << 12 |
+				sta->ht_cap.mcs.rx_mask[1] << 20;
+			if (sta->ht_cap.cap &
+#endif
+				(IEEE80211_HT_CAP_SGI_40 | IEEE80211_HT_CAP_SGI_20))
 				sgi = 1;
 
 			highest_rate = fls(ramask) - 1;
 			if (rtl8xxxu_ht40_2g &&
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5,18,19)
 			    (sta->deflink.ht_cap.cap & IEEE80211_HT_CAP_SUP_WIDTH_20_40))
+#else
+				(sta->ht_cap.cap & IEEE80211_HT_CAP_SUP_WIDTH_20_40))
+#endif
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,9,11)
 				bw = RATE_INFO_BW_40;
 			else
 				bw = RATE_INFO_BW_20;
+#else
+				bw = NL80211_CHAN_HT40MINUS;
+			else
+				bw = NL80211_CHAN_HT20;
+#endif
 			rcu_read_unlock();
 
 			rtl8xxxu_update_ra_report(rarpt, highest_rate, sgi, bw);
@@ -4863,7 +4961,11 @@ rtl8xxxu_bss_info_changed(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 			priv->vif = vif;
 			priv->rssi_level = RTL8XXXU_RATR_STA_INIT;
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,9,11)
 			priv->fops->update_rate_mask(priv, ramask, 0, sgi, bw == RATE_INFO_BW_40);
+#else
+			priv->fops->update_rate_mask(priv, ramask, 0, sgi, bw == NL80211_CHAN_HT40MINUS);
+#endif
 
 			rtl8xxxu_write8(priv, REG_BCN_MAX_ERR, 0xff);
 
@@ -4871,7 +4973,11 @@ rtl8xxxu_bss_info_changed(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 
 			/* joinbss sequence */
 			rtl8xxxu_write16(priv, REG_BCN_PSR_RPT,
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5,9,17)
 					 0xc000 | vif->cfg.aid);
+#else
+					 0xc000 | vif->bss_conf.aid);
+#endif
 
 			priv->fops->report_connect(priv, 0, true);
 		} else {
@@ -5390,10 +5496,10 @@ static void rtl8xxxu_tx(struct ieee80211_hw *hw,
 
 	tx_info->rate_driver_data[0] = hw;
 
-	#if LINUX_VERSION_CODE > KERNEL_VERSION(3,6,11)
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,6,11)
 	if (control && control->sta)
 		sta = control->sta;
-	#endif
+#endif
 	queue = rtl8xxxu_queue_select(hdr, skb);
 
 	tx_desc = skb_push(skb, tx_desc_size);
@@ -5428,12 +5534,19 @@ static void rtl8xxxu_tx(struct ieee80211_hw *hw,
 	/* (tx_info->flags & IEEE80211_TX_CTL_AMPDU) && */
 	ampdu_enable = false;
 	if (ieee80211_is_data_qos(hdr->frame_control) && sta) {
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5,18,19)
 		if (sta->deflink.ht_cap.ht_supported) {
+#else
+		if (sta->ht_cap.ht_supported) {
+#endif
 			u32 ampdu, val32;
 			u8 *qc = ieee80211_get_qos_ctl(hdr);
 			u8 tid = qc[0] & IEEE80211_QOS_CTL_TID_MASK;
-
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5,18,19)
 			ampdu = (u32)sta->deflink.ht_cap.ampdu_density;
+#else
+			ampdu = (u32)sta->ht_cap.ampdu_density;
+#endif
 			val32 = ampdu << TXDESC_AMPDU_DENSITY_SHIFT;
 			tx_desc->txdw2 |= cpu_to_le32(val32);
 
@@ -5448,7 +5561,11 @@ static void rtl8xxxu_tx(struct ieee80211_hw *hw,
 
 	if (rate_flag & IEEE80211_TX_RC_SHORT_GI ||
 	    (ieee80211_is_data_qos(hdr->frame_control) &&
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5,18,19)
 	     sta && sta->deflink.ht_cap.cap &
+#else
+		sta && sta->ht_cap.cap &
+#endif
 	     (IEEE80211_HT_CAP_SGI_40 | IEEE80211_HT_CAP_SGI_20)))
 		sgi = true;
 
@@ -5506,7 +5623,11 @@ static void rtl8xxxu_rx_parse_phystats(struct rtl8xxxu_priv *priv,
 		bool parse_cfo = priv->fops->set_crystal_cap &&
 				 priv->vif &&
 				 priv->vif->type == NL80211_IFTYPE_STATION &&
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5,9,17)
 				 priv->vif->cfg.assoc &&
+#else
+				 priv->vif->bss_conf.assoc &&
+#endif
 				 !crc_icv_err &&
 				 !ieee80211_is_ctl(hdr->frame_control) &&
 				 ether_addr_equal(priv->vif->bss_conf.bssid, hdr->addr2);
@@ -5744,7 +5865,11 @@ void rtl8723bu_handle_bt_inquiry(struct rtl8xxxu_priv *priv)
 
 	vif = priv->vif;
 	btcoex = &priv->bt_coex;
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5,9,17)
 	wifi_connected = (vif && vif->cfg.assoc);
+#else
+	wifi_connected = (vif && vif->bss_conf.assoc);
+#endif
 
 	if (!wifi_connected) {
 		rtl8723bu_set_ps_tdma(priv, 0x8, 0x0, 0x0, 0x0, 0x0);
@@ -5770,8 +5895,11 @@ void rtl8723bu_handle_bt_info(struct rtl8xxxu_priv *priv)
 
 	vif = priv->vif;
 	btcoex = &priv->bt_coex;
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5,9,17)
 	wifi_connected = (vif && vif->cfg.assoc);
-
+#else
+	wifi_connected = (vif && vif->bss_conf.assoc);
+#endif
 	if (wifi_connected) {
 		u32 val32 = 0;
 		u32 high_prio_tx = 0, high_prio_rx = 0;
@@ -5848,13 +5976,24 @@ static void rtl8xxxu_c2hcmd_callback(struct work_struct *work)
 			rtl8723bu_handle_bt_info(priv);
 			break;
 		case C2H_8723B_RA_REPORT:
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,9,11)
 			bw = rarpt->txrate.bw;
+#else
+			bw = priv->hw->conf.channel_type;
+			//bw = c2h->ra_report.bw;
+#endif
 
 			if (skb->len >= offsetofend(typeof(*c2h), ra_report.bw)) {
 				if (c2h->ra_report.bw == RTL8XXXU_CHANNEL_WIDTH_40)
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,9,11)
 					bw = RATE_INFO_BW_40;
 				else
 					bw = RATE_INFO_BW_20;
+#else
+					bw = NL80211_CHAN_HT40MINUS;
+				else
+					bw = NL80211_CHAN_HT20;
+#endif
 			}
 
 			rtl8xxxu_update_ra_report(rarpt, c2h->ra_report.rate,
@@ -6357,7 +6496,10 @@ exit:
 
 static int rtl8xxxu_conf_tx(struct ieee80211_hw *hw,
 			    struct ieee80211_vif *vif,
-			    unsigned int link_id, u16 queue,
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5,19,17)
+			    unsigned int link_id,
+#endif
+				u16 queue,
 			    const struct ieee80211_tx_queue_params *param)
 {
 	struct rtl8xxxu_priv *priv = hw->priv;
@@ -6578,8 +6720,13 @@ enum ieee80211_ampdu_mlme_action action, struct ieee80211_sta *sta, u16 tid, u16
 	switch (action) {
 	case IEEE80211_AMPDU_TX_START:
 		dev_dbg(dev, "%s: IEEE80211_AMPDU_TX_START\n", __func__);
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5,18,19)
 		ampdu_factor = sta->deflink.ht_cap.ampdu_factor;
 		ampdu_density = sta->deflink.ht_cap.ampdu_density;
+#else
+		ampdu_factor = sta->ht_cap.ampdu_factor;
+		ampdu_density = sta->ht_cap.ampdu_density;
+#endif
 		rtl8xxxu_set_ampdu_factor(priv, ampdu_factor);
 		rtl8xxxu_set_ampdu_min_space(priv, ampdu_density);
 		dev_dbg(dev,
@@ -6661,7 +6808,7 @@ static void rtl8xxxu_refresh_rate_mask(struct rtl8xxxu_priv *priv,
 #if LINUX_VERSION_CODE > KERNEL_VERSION(3,9,11)
 	txbw_40mhz = (hw->conf.chandef.width == NL80211_CHAN_WIDTH_40) ? 1 : 0;
 #else
-	txbw_40mhz = (hw->conf.chandef.width == NL80211_CHAN_HT40MINUS) ? 1 : 0;
+	txbw_40mhz = (hw->conf.channel_type == NL80211_CHAN_HT40MINUS) ? 1 : 0;
 #endif
 	
 
@@ -6689,10 +6836,17 @@ static void rtl8xxxu_refresh_rate_mask(struct rtl8xxxu_priv *priv,
 		u32 rate_bitmap = 0;
 
 		rcu_read_lock();
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5,18,19)
 		rate_bitmap = (sta->deflink.supp_rates[0] & 0xfff) |
 				(sta->deflink.ht_cap.mcs.rx_mask[0] << 12) |
 				(sta->deflink.ht_cap.mcs.rx_mask[1] << 20);
 		if (sta->deflink.ht_cap.cap &
+#else
+		rate_bitmap = (sta->supp_rates[0] & 0xfff) |
+				(sta->ht_cap.mcs.rx_mask[0] << 12) |
+				(sta->ht_cap.mcs.rx_mask[1] << 20);
+		if (sta->ht_cap.cap &
+#endif
 		    (IEEE80211_HT_CAP_SGI_40 | IEEE80211_HT_CAP_SGI_20))
 			sgi = 1;
 		rcu_read_unlock();
@@ -6805,8 +6959,11 @@ static void rtl8xxxu_track_cfo(struct rtl8xxxu_priv *priv)
 	struct rtl8xxxu_cfo_tracking *cfo = &priv->cfo_tracking;
 	int cfo_khz_a, cfo_khz_b, cfo_average;
 	int crystal_cap;
-
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5,9,17)
 	if (!priv->vif || !priv->vif->cfg.assoc) {
+#else
+	if (!priv->vif || !priv->vif->bss_conf.assoc) {
+#endif
 		/* Reset */
 		cfo->adjust = true;
 
@@ -6892,7 +7049,13 @@ static void rtl8xxxu_watchdog_callback(struct work_struct *work)
 		}
 		rcu_read_unlock();
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,4,113)
 		signal = ieee80211_ave_rssi(vif);
+#else
+		struct ieee80211_sub_if_data *sdata = container_of(vif, struct ieee80211_sub_if_data, vif);
+		struct ieee80211_if_managed *ifmgd = &sdata->u.mgd;
+		signal = &ifmgd->ave_beacon_signal;
+#endif
 
 		priv->fops->report_rssi(priv, 0,
 					rtl8xxxu_signal_to_snr(signal));
@@ -7137,7 +7300,11 @@ static void rtl8xxxu_init_led(struct rtl8xxxu_priv *priv)
 	if (!priv->fops->led_classdev_brightness_set)
 		return;
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(4,4,302)
 	led->brightness_set_blocking = priv->fops->led_classdev_brightness_set;
+#else
+	led->brightness_set = priv->fops->led_classdev_brightness_set;
+#endif
 
 	snprintf(priv->led_name, sizeof(priv->led_name),
 		 "rtl8xxxu-usb%s", dev_name(&priv->udev->dev));
@@ -7160,7 +7327,7 @@ static void rtl8xxxu_deinit_led(struct rtl8xxxu_priv *priv)
 	if (!priv->led_registered)
 		return;
 
-	priv->fops->led_classdev_brightness_set(led, LED_OFF);
+	priv->fops->led_classdev_brightness_set(led, 0);
 	led_classdev_unregister(led);
 }
 
@@ -7342,7 +7509,6 @@ static int rtl8xxxu_probe(struct usb_interface *interface,
 	 * where we handle the rate control in the driver.
 	 */
 	hw->flags |= IEEE80211_HW_HAS_RATE_CONTROL;
-	hw->flags |= IEEE80211_HW_SUPPORT_FAST_XMIT;
 	hw->flags |= IEEE80211_HW_AMPDU_AGGREGATION;
 #endif
 

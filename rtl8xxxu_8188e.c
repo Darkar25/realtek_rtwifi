@@ -404,8 +404,11 @@ static int rtl8188eu_identify_chip(struct rtl8xxxu_priv *priv)
 	struct device *dev = &priv->udev->dev;
 	u32 sys_cfg, vendor;
 	int ret = 0;
-
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,16,59)
 	strscpy(priv->chip_name, "8188EU", sizeof(priv->chip_name));
+#else
+	sprintf(priv->chip_name, "8188EU");
+#endif
 	priv->rtl_chip = RTL8188E;
 	priv->rf_paths = 1;
 	priv->rx_paths = 1;
@@ -457,15 +460,10 @@ static void rtl8188eu_config_channel(struct ieee80211_hw *hw)
 #if LINUX_VERSION_CODE > KERNEL_VERSION(3,9,11)
 	switch (hw->conf.chandef.width) {
 	case NL80211_CHAN_WIDTH_20_NOHT:
+	case NL80211_CHAN_WIDTH_20:
 #else
 	switch (hw->conf.channel_type) {
 	case NL80211_CHAN_NO_HT:
-#endif
-		ht = false;
-		/* fall through */
-#if LINUX_VERSION_CODE > KERNEL_VERSION(3,9,11)
-	case NL80211_CHAN_WIDTH_20:
-#else
 	case NL80211_CHAN_HT20:
 #endif
 		opmode |= BW_OPMODE_20MHZ;
@@ -1388,10 +1386,10 @@ static int rtl8188eu_led_brightness_set(struct led_classdev *led_cdev,
 						  led_cdev);
 	u8 ledcfg = rtl8xxxu_read8(priv, REG_LEDCFG2);
 
-	if (brightness == LED_OFF) {
+	if (brightness == 0) {
 		ledcfg &= ~LEDCFG2_HW_LED_CONTROL;
 		ledcfg |= LEDCFG2_SW_LED_CONTROL | LEDCFG2_SW_LED_DISABLE;
-	} else if (brightness == LED_ON) {
+	} else if (brightness == 1) {
 		ledcfg &= ~(LEDCFG2_HW_LED_CONTROL | LEDCFG2_SW_LED_DISABLE);
 		ledcfg |= LEDCFG2_SW_LED_CONTROL;
 	} else if (brightness == RTL8XXXU_HW_LED_CONTROL) {
@@ -1590,12 +1588,20 @@ static void rtl8188e_rate_decision(struct rtl8xxxu_ra_info *ra)
 		rtl8188e_rate_down(ra);
 
 		rtl8xxxu_update_ra_report(&priv->ra_report, ra->decision_rate,
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,9,11)
 					  ra->rate_sgi, priv->ra_report.txrate.bw);
+#else
+					  ra->rate_sgi, priv->hw->conf.channel_type);
+#endif
 	} else if (ra->nsc_up > n_threshold_high[rate_id]) {
 		rtl8188e_rate_up(ra);
 
 		rtl8xxxu_update_ra_report(&priv->ra_report, ra->decision_rate,
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,9,11)
 					  ra->rate_sgi, priv->ra_report.txrate.bw);
+#else
+					  ra->rate_sgi, priv->hw->conf.channel_type);
+#endif
 	}
 
 	if (ra->decision_rate == ra->pre_rate)

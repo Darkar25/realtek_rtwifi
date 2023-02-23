@@ -495,11 +495,19 @@ static int rtl8192eu_identify_chip(struct rtl8xxxu_priv *priv)
 	bonding = rtl8xxxu_read32(priv, REG_HPON_FSM);
 	bonding &= HPON_FSM_BONDING_MASK;
 	if (bonding == HPON_FSM_BONDING_1T2R) {
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,16,59)
 		strscpy(priv->chip_name, "8191EU", sizeof(priv->chip_name));
+#else
+		sprintf(priv->chip_name, "8191EU");
+#endif
 		priv->tx_paths = 1;
 		priv->rtl_chip = RTL8191E;
 	} else {
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,16,59)
 		strscpy(priv->chip_name, "8192EU", sizeof(priv->chip_name));
+#else
+		sprintf(priv->chip_name, "8192EU");
+#endif
 		priv->tx_paths = 2;
 		priv->rtl_chip = RTL8192E;
 	}
@@ -1772,10 +1780,10 @@ static int rtl8192eu_led_brightness_set(struct led_classdev *led_cdev,
 						  led_cdev);
 	u8 ledcfg = rtl8xxxu_read8(priv, REG_LEDCFG1);
 
-	if (brightness == LED_OFF) {
+	if (brightness == 0) {
 		ledcfg &= ~LEDCFG1_HW_LED_CONTROL;
 		ledcfg |= LEDCFG1_LED_DISABLE;
-	} else if (brightness == LED_ON) {
+	} else if (brightness == 1) {
 		ledcfg &= ~(LEDCFG1_HW_LED_CONTROL | LEDCFG1_LED_DISABLE);
 	} else if (brightness == RTL8XXXU_HW_LED_CONTROL) {
 		ledcfg &= ~LEDCFG1_LED_DISABLE;

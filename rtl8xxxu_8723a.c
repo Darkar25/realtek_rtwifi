@@ -142,8 +142,11 @@ static int rtl8723au_identify_chip(struct rtl8xxxu_priv *priv)
 		ret = -ENOTSUPP;
 		goto out;
 	}
-
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,16,59)
 	strscpy(priv->chip_name, "8723AU", sizeof(priv->chip_name));
+#else
+	sprintf(priv->chip_name, "8723AU");
+#endif
 	priv->usb_interrupts = 1;
 	priv->rtl_chip = RTL8723A;
 
@@ -465,10 +468,10 @@ static int rtl8723au_led_brightness_set(struct led_classdev *led_cdev,
 						  led_cdev);
 	u8 ledcfg = rtl8xxxu_read8(priv, REG_LEDCFG2);
 
-	if (brightness == LED_OFF) {
+	if (brightness == 0) {
 		ledcfg &= ~LEDCFG2_HW_LED_CONTROL;
 		ledcfg |= LEDCFG2_SW_LED_CONTROL | LEDCFG2_SW_LED_DISABLE;
-	} else if (brightness == LED_ON) {
+	} else if (brightness == 1) {
 		ledcfg &= ~(LEDCFG2_HW_LED_CONTROL | LEDCFG2_SW_LED_DISABLE);
 		ledcfg |= LEDCFG2_SW_LED_CONTROL;
 	} else if (brightness == RTL8XXXU_HW_LED_CONTROL) {

@@ -326,8 +326,11 @@ static int rtl8188fu_identify_chip(struct rtl8xxxu_priv *priv)
 	struct device *dev = &priv->udev->dev;
 	u32 sys_cfg, vendor;
 	int ret = 0;
-
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,16,59)
 	strscpy(priv->chip_name, "8188FU", sizeof(priv->chip_name));
+#else
+	sprintf(priv->chip_name, "8188FU");
+#endif
 	priv->rtl_chip = RTL8188F;
 	priv->rf_paths = 1;
 	priv->rx_paths = 1;
@@ -631,7 +634,7 @@ static void rtl8188fu_config_channel(struct ieee80211_hw *hw)
 			channel -= 2;
 		}
 #else
-	if (hw->conf.channel_type == NL80211_CHAN_WIDTH_40) {
+	if (hw->conf.channel_type == NL80211_CHAN_HT40MINUS) {
 		sec_ch_above = 0;
 		channel -= 2;
 #endif
