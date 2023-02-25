@@ -1588,19 +1588,27 @@ static void rtl8188e_rate_decision(struct rtl8xxxu_ra_info *ra)
 		rtl8188e_rate_down(ra);
 
 		rtl8xxxu_update_ra_report(&priv->ra_report, ra->decision_rate,
-#if LINUX_VERSION_CODE > KERNEL_VERSION(3,9,11)
-					  ra->rate_sgi, priv->ra_report.txrate.bw);
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,19,8)
+					  ra->rate_sgi, rarpt->txrate.bw);
 #else
+	#if LINUX_VERSION_CODE > KERNEL_VERSION(3,9,11)
+					  ra->rate_sgi, priv->hw->conf.chandef.width);
+	#else
 					  ra->rate_sgi, priv->hw->conf.channel_type);
+	#endif
 #endif
 	} else if (ra->nsc_up > n_threshold_high[rate_id]) {
 		rtl8188e_rate_up(ra);
 
 		rtl8xxxu_update_ra_report(&priv->ra_report, ra->decision_rate,
-#if LINUX_VERSION_CODE > KERNEL_VERSION(3,9,11)
-					  ra->rate_sgi, priv->ra_report.txrate.bw);
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,19,8)
+					  ra->rate_sgi, rarpt->txrate.bw);
 #else
+	#if LINUX_VERSION_CODE > KERNEL_VERSION(3,9,11)
+					  ra->rate_sgi, priv->hw->conf.chandef.width);
+	#else
 					  ra->rate_sgi, priv->hw->conf.channel_type);
+	#endif
 #endif
 	}
 

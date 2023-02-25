@@ -4945,7 +4945,7 @@ rtl8xxxu_bss_info_changed(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 #else
 				(sta->ht_cap.cap & IEEE80211_HT_CAP_SUP_WIDTH_20_40))
 #endif
-#if LINUX_VERSION_CODE > KERNEL_VERSION(3,9,11)
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,19,8)
 				bw = RATE_INFO_BW_40;
 			else
 				bw = RATE_INFO_BW_20;
@@ -4961,7 +4961,7 @@ rtl8xxxu_bss_info_changed(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 			priv->vif = vif;
 			priv->rssi_level = RTL8XXXU_RATR_STA_INIT;
 
-#if LINUX_VERSION_CODE > KERNEL_VERSION(3,9,11)
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,19,8)
 			priv->fops->update_rate_mask(priv, ramask, 0, sgi, bw == RATE_INFO_BW_40);
 #else
 			priv->fops->update_rate_mask(priv, ramask, 0, sgi, bw == NL80211_CHAN_HT40MINUS);
@@ -5976,16 +5976,19 @@ static void rtl8xxxu_c2hcmd_callback(struct work_struct *work)
 			rtl8723bu_handle_bt_info(priv);
 			break;
 		case C2H_8723B_RA_REPORT:
-#if LINUX_VERSION_CODE > KERNEL_VERSION(3,9,11)
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,19,8)
 			bw = rarpt->txrate.bw;
 #else
-			bw = priv->hw->conf.channel_type;
-			//bw = c2h->ra_report.bw;
+	#if LINUX_VERSION_CODE > KERNEL_VERSION(3,9,11)
+			bw = &priv->hw->conf.chandef.width;
+	#else
+			bw = &priv->hw->conf.channel_type;
+	#endif
 #endif
 
 			if (skb->len >= offsetofend(typeof(*c2h), ra_report.bw)) {
 				if (c2h->ra_report.bw == RTL8XXXU_CHANNEL_WIDTH_40)
-#if LINUX_VERSION_CODE > KERNEL_VERSION(3,9,11)
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,19,8)
 					bw = RATE_INFO_BW_40;
 				else
 					bw = RATE_INFO_BW_20;

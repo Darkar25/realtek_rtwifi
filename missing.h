@@ -103,6 +103,15 @@ __MAKE_OP(64)
 #undef ____MAKE_OP
 #endif
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(3,12,74)
+#define BIT_ULL(nr)		(1ULL << (nr))
+#define GENMASK_INPUT_CHECK(h, l) 0
+#define __GENMASK(h, l) \
+	(((~UL(0)) - (UL(1) << (l)) + 1) & \
+	 (~UL(0) >> (BITS_PER_LONG - 1 - (h))))
+#define GENMASK(h, l) \
+	(GENMASK_INPUT_CHECK(h, l) + __GENMASK(h, l))
+#endif
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(4,8,17)
 #define __bf_shf(x) (__builtin_ffsll(x) - 1)
 #define __scalar_type_to_unsigned_cases(type)				\
 		unsigned type:	(unsigned type)0,			\
@@ -132,13 +141,6 @@ __MAKE_OP(64)
 	({								\
 		(typeof(_mask))(((_reg) & (_mask)) >> __bf_shf(_mask));	\
 	})
-#define BIT_ULL(nr)		(1ULL << (nr))
-#define GENMASK_INPUT_CHECK(h, l) 0
-#define __GENMASK(h, l) \
-	(((~UL(0)) - (UL(1) << (l)) + 1) & \
-	 (~UL(0) >> (BITS_PER_LONG - 1 - (h))))
-#define GENMASK(h, l) \
-	(GENMASK_INPUT_CHECK(h, l) + __GENMASK(h, l))
 #endif
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(3,4,113)
 struct mesh_preq_queue {
